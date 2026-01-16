@@ -222,6 +222,12 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
                   .setContentType(contentType)
                   .build();
       }
+    } else {
+      // Дефолтные значения для media режима (соответствуют изменениям в AudioSwitchManager)
+      audioAttributes = new AudioAttributes.Builder()
+              .setUsage(AudioAttributes.USAGE_MEDIA)
+              .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+              .build();
     }
     JavaAudioDeviceModule.Builder audioDeviceModuleBuilder = JavaAudioDeviceModule.builder(context);
 
