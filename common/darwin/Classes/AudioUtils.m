@@ -49,7 +49,9 @@
       targetOptions = AVAudioSessionCategoryOptionAllowBluetooth |
                       AVAudioSessionCategoryOptionAllowBluetoothA2DP |
                       AVAudioSessionCategoryOptionAllowAirPlay;
-      targetMode = AVAudioSessionModeSpokenAudio;
+      // Используем Default режим для совместимости с симулятором
+      // SpokenAudio может не работать в симуляторе iOS
+      targetMode = AVAudioSessionModeDefault;
     }
     
     if (needCategoryChange || needModeChange) {
