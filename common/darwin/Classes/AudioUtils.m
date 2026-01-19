@@ -34,7 +34,6 @@
     BOOL needModeChange = NO;
     AVAudioSessionCategory targetCategory = session.category;
     AVAudioSessionMode targetMode = config.mode;
-    AVAudioSessionCategoryOptions targetOptions = config.categoryOptions;
     
     if (session.category == AVAudioSessionCategoryAmbient ||
         session.category == AVAudioSessionCategorySoloAmbient) {
@@ -46,11 +45,7 @@
       needCategoryChange = YES;
       needModeChange = YES;
       targetCategory = AVAudioSessionCategoryPlayback;
-      targetOptions = AVAudioSessionCategoryOptionAllowBluetooth |
-                      AVAudioSessionCategoryOptionAllowBluetoothA2DP |
-                      AVAudioSessionCategoryOptionAllowAirPlay;
       // Используем Default режим для совместимости с симулятором
-      // SpokenAudio может не работать в симуляторе iOS
       targetMode = AVAudioSessionModeDefault;
     }
     
@@ -59,7 +54,9 @@
       NSError* error = nil;
       
       if (needCategoryChange) {
-        bool success = [session setCategory:targetCategory withOptions:targetOptions error:&error];
+        // Используем опции = 0 (дефолтные для категории Playback)
+        // Это безопаснее и не ломает существующие настройки
+        bool success = [session setCategory:targetCategory withOptions:0 error:&error];
         if (!success)
           NSLog(@"ensureAudioSessionWithRecording[false]: setCategory failed due to: %@", error);
       }
