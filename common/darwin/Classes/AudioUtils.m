@@ -27,15 +27,49 @@
     if (!success)
       NSLog(@"ensureAudioSessionWithRecording[true]: setMode failed due to: %@", error);
     [session unlockForConfiguration];
-  } else if (!recording && (session.category == AVAudioSessionCategoryAmbient ||
-                            session.category == AVAudioSessionCategorySoloAmbient)) {
-    config.mode = AVAudioSessionModeDefault;
-    [session lockForConfiguration];
-    NSError* error = nil;
-    bool success = [session setMode:config.mode error:&error];
-    if (!success)
-      NSLog(@"ensureAudioSessionWithRecording[false]: setMode failed due to: %@", error);
-    [session unlockForConfiguration];
+  } else if (!recording) {
+    // Для воспроизведения используем Playback (не PlayAndRecord)
+    // Это критически важно для работы remote control commands на lock screen
+    BOOL needCategoryChange = NO;
+    BOOL needModeChange = NO;
+    AVAudioSessionCategory targetCategory = session.category;
+    AVAudioSessionMode targetMode = config.mode;
+    AVAudioSessionCategoryOptions targetOptions = config.categoryOptions;
+    
+    if (session.category == AVAudioSessionCategoryAmbient ||
+        session.category == AVAudioSessionCategorySoloAmbient) {
+      // Для Ambient категорий только обновляем режим
+      needModeChange = YES;
+      targetMode = AVAudioSessionModeDefault;
+    } else if (session.category != AVAudioSessionCategoryPlayback) {
+      // Для всех остальных категорий (включая PlayAndRecord) переключаем на Playback
+      needCategoryChange = YES;
+      needModeChange = YES;
+      targetCategory = AVAudioSessionCategoryPlayback;
+      targetOptions = AVAudioSessionCategoryOptionAllowBluetooth |
+                      AVAudioSessionCategoryOptionAllowBluetoothA2DP |
+                      AVAudioSessionCategoryOptionAllowAirPlay;
+      targetMode = AVAudioSessionModeSpokenAudio;
+    }
+    
+    if (needCategoryChange || needModeChange) {
+      [session lockForConfiguration];
+      NSError* error = nil;
+      
+      if (needCategoryChange) {
+        bool success = [session setCategory:targetCategory withOptions:targetOptions error:&error];
+        if (!success)
+          NSLog(@"ensureAudioSessionWithRecording[false]: setCategory failed due to: %@", error);
+      }
+      
+      if (needModeChange) {
+        bool success = [session setMode:targetMode error:&error];
+        if (!success)
+          NSLog(@"ensureAudioSessionWithRecording[false]: setMode failed due to: %@", error);
+      }
+      
+      [session unlockForConfiguration];
+    }
   }
 }
 
