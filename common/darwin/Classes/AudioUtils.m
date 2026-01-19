@@ -54,9 +54,17 @@
       NSError* error = nil;
       
       if (needCategoryChange) {
-        // Используем опции = 0 (дефолтные для категории Playback)
-        // Это безопаснее и не ломает существующие настройки
-        bool success = [session setCategory:targetCategory withOptions:0 error:&error];
+        // Используем опции из config.categoryOptions если они установлены (через setAppleAudioConfiguration)
+        // Иначе используем минимально необходимые опции для Playback (как в коде для recording)
+        AVAudioSessionCategoryOptions targetOptions;
+        if (config.categoryOptions != 0) {
+          targetOptions = config.categoryOptions;
+        } else {
+          targetOptions = AVAudioSessionCategoryOptionAllowBluetooth |
+                          AVAudioSessionCategoryOptionAllowBluetoothA2DP |
+                          AVAudioSessionCategoryOptionAllowAirPlay;
+        }
+        bool success = [session setCategory:targetCategory withOptions:targetOptions error:&error];
         if (!success)
           NSLog(@"ensureAudioSessionWithRecording[false]: setCategory failed due to: %@", error);
       }
@@ -126,7 +134,7 @@
                                         AVAudioSessionCategoryOptionAllowBluetooth
                                   error:&error];
 
-    success = [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker
+    success = [session overrideOutputAudioPort:kAudioSessionProperty_OverrideAudioRoute
                                          error:&error];
     if (!success)
       NSLog(@"setSpeakerphoneOn: Port override failed due to: %@", error);
