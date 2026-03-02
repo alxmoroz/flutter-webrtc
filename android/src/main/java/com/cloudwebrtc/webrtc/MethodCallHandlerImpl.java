@@ -2052,6 +2052,32 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
   public void peerConnectionAddICECandidate(ConstraintsMap candidateMap, final String id,
                                             final Result result) {
     boolean res = false;
+
+    // Guard against null/empty ICE candidates (e.g. Janus end-of-candidates messages)
+    if (candidateMap == null) {
+      Log.d(TAG, "peerConnectionAddICECandidate() candidateMap is null, ignoring candidate");
+      result.success(false);
+      return;
+    }
+
+    String sdpMid = null;
+    String candidateStr = null;
+
+    if (!candidateMap.isNull("sdpMid")) {
+      sdpMid = candidateMap.getString("sdpMid");
+    }
+    if (!candidateMap.isNull("candidate")) {
+      candidateStr = candidateMap.getString("candidate");
+    }
+
+    if (sdpMid == null || sdpMid.isEmpty() || candidateStr == null || candidateStr.isEmpty()) {
+      Log.d(TAG,
+          "peerConnectionAddICECandidate() ignoring null/empty ICE candidate: " + candidateMap);
+      // Do not call into native addIceCandidate with invalid data
+      result.success(false);
+      return;
+    }
+
     PeerConnection peerConnection = getPeerConnection(id);
     if (peerConnection != null) {
       int sdpMLineIndex = 0;
@@ -2059,9 +2085,9 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
         sdpMLineIndex = candidateMap.getInt("sdpMLineIndex");
       }
       IceCandidate candidate = new IceCandidate(
-          candidateMap.getString("sdpMid"),
+          sdpMid,
           sdpMLineIndex,
-          candidateMap.getString("candidate"));
+          candidateStr);
       res = peerConnection.addIceCandidate(candidate);
     } else {
       resultError("peerConnectionAddICECandidate", "peerConnection is null", result);

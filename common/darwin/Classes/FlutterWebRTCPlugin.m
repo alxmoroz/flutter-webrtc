@@ -609,13 +609,29 @@ static FlutterWebRTCPlugin *sharedSingleton;
     NSDictionary* argsMap = call.arguments;
     NSString* peerConnectionId = argsMap[@"peerConnectionId"];
     NSDictionary* candMap = argsMap[@"candidate"];
-    NSString* sdp = candMap[@"candidate"];
+    // Guard against null/empty ICE candidates (e.g. Janus end-of-candidates messages)
+    if (![candMap isKindOfClass:[NSDictionary class]] || candMap == (id)[NSNull null]) {
+      NSLog(@"[FlutterWebRTCPlugin] addCandidate: candidate map is null/invalid, ignoring");
+      result(nil);
+      return;
+    }
+
+    id sdpValue = candMap[@"candidate"];
+    NSString* sdp = ([sdpValue isKindOfClass:[NSNull class]] ? nil : sdpValue);
     id sdpMLineIndexValue = candMap[@"sdpMLineIndex"];
     int sdpMLineIndex = 0;
     if (![sdpMLineIndexValue isKindOfClass:[NSNull class]]) {
       sdpMLineIndex = ((NSNumber*)candMap[@"sdpMLineIndex"]).intValue;
     }
-    NSString* sdpMid = candMap[@"sdpMid"];
+    id sdpMidValue = candMap[@"sdpMid"];
+    NSString* sdpMid = ([sdpMidValue isKindOfClass:[NSNull class]] ? nil : sdpMidValue);
+
+    if (sdp == nil || sdp.length == 0 || sdpMid == nil || sdpMid.length == 0) {
+      NSLog(@"[FlutterWebRTCPlugin] addCandidate: ignoring null/empty ICE candidate: %@", candMap);
+      // Do not create RTCIceCandidate or call into native WebRTC with invalid data
+      result(nil);
+      return;
+    }
 
     RTCIceCandidate* candidate = [[RTCIceCandidate alloc] initWithSdp:sdp
                                                         sdpMLineIndex:sdpMLineIndex
