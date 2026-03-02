@@ -2063,16 +2063,14 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
     String sdpMid = null;
     String candidateStr = null;
 
-    if (!candidateMap.isNull("sdpMid")) {
-      sdpMid = candidateMap.getString("sdpMid");
-    }
     if (!candidateMap.isNull("candidate")) {
       candidateStr = candidateMap.getString("candidate");
     }
 
-    if (sdpMid == null || sdpMid.isEmpty() || candidateStr == null || candidateStr.isEmpty()) {
+    // Ignore candidates that do not carry any usable candidate string
+    if (candidateStr == null || candidateStr.isEmpty()) {
       Log.d(TAG,
-          "peerConnectionAddICECandidate() ignoring null/empty ICE candidate: " + candidateMap);
+          "peerConnectionAddICECandidate() ignoring ICE candidate with empty candidate string: " + candidateMap);
       // Do not call into native addIceCandidate with invalid data
       result.success(false);
       return;
@@ -2083,6 +2081,15 @@ public class MethodCallHandlerImpl implements MethodCallHandler, StateProvider {
       int sdpMLineIndex = 0;
       if (!candidateMap.isNull("sdpMLineIndex")) {
         sdpMLineIndex = candidateMap.getInt("sdpMLineIndex");
+      }
+
+      // Fallback for null/empty sdpMid: use string form of m-line index (matches browser tolerance
+      // where either sdpMid or sdpMLineIndex is enough to identify the media section).
+      if (!candidateMap.isNull("sdpMid")) {
+        sdpMid = candidateMap.getString("sdpMid");
+      }
+      if (sdpMid == null || sdpMid.isEmpty()) {
+        sdpMid = String.valueOf(sdpMLineIndex);
       }
       IceCandidate candidate = new IceCandidate(
           sdpMid,

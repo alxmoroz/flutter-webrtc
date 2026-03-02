@@ -626,11 +626,18 @@ static FlutterWebRTCPlugin *sharedSingleton;
     id sdpMidValue = candMap[@"sdpMid"];
     NSString* sdpMid = ([sdpMidValue isKindOfClass:[NSNull class]] ? nil : sdpMidValue);
 
-    if (sdp == nil || sdp.length == 0 || sdpMid == nil || sdpMid.length == 0) {
-      NSLog(@"[FlutterWebRTCPlugin] addCandidate: ignoring null/empty ICE candidate: %@", candMap);
+    // Ignore candidates that do not carry any usable candidate string
+    if (sdp == nil || sdp.length == 0) {
+      NSLog(@"[FlutterWebRTCPlugin] addCandidate: ignoring ICE candidate with empty candidate string: %@", candMap);
       // Do not create RTCIceCandidate or call into native WebRTC with invalid data
       result(nil);
       return;
+    }
+
+    // Fallback for null/empty sdpMid: use string form of m-line index (matches browser tolerance
+    // where either sdpMid or sdpMLineIndex is enough to identify the media section).
+    if (sdpMid == nil || sdpMid.length == 0) {
+      sdpMid = [NSString stringWithFormat:@"%d", sdpMLineIndex];
     }
 
     RTCIceCandidate* candidate = [[RTCIceCandidate alloc] initWithSdp:sdp
