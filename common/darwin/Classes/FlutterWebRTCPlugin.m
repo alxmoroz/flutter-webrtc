@@ -302,12 +302,19 @@ static FlutterWebRTCPlugin *sharedSingleton;
             [[VideoEncoderFactorySimulcast alloc] initWithPrimary:encoderFactory fallback:encoderFactory];
 
         // macOS Screen Share Audio Crash Fix:
-        // Use CoreAudio ADM (value 0) instead of AVAudioEngine (RTCAudioDeviceModuleTypeAudioEngine)
-        // AVAudioEngine crashes when screen share audio and microphone coexist due to
-        // format conflicts in AVAudioIONodeImpl::SetOutputFormat
-        // See: https://github.com/flutter-webrtc/flutter-webrtc/issues/1986
+        // - On macOS we use CoreAudio ADM (value 0) instead of AVAudioEngine to
+        //   avoid crashes when screen share audio and microphone coexist.
+        // - On iOS we keep using AVAudioEngine ADM to preserve existing
+        //   behaviour and microphone permission semantics.
+        RTCAudioDeviceModuleType admType =
+#if TARGET_OS_OSX
+            0; // CoreAudio ADM
+#else
+            RTCAudioDeviceModuleTypeAudioEngine;
+#endif
+
         _peerConnectionFactory =
-            [[RTCPeerConnectionFactory alloc] initWithAudioDeviceModuleType:0
+            [[RTCPeerConnectionFactory alloc] initWithAudioDeviceModuleType:admType
                                                       bypassVoiceProcessing:bypassVoiceProcessing
                                                              encoderFactory:simulcastFactory
                                                              decoderFactory:decoderFactory
